@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sea Battle</title>
+  <link rel="stylesheet" href="css.css">
+</head>
+<body>
+
+     <button class="button start">Start</button>
+     <!-- <button class="button pass" onclick="javascript:pass()">Pass</button> -->
+  <div id="root">
+    <div id="sk1">
+      <div class="stats"><div class="nick" contenteditable="true"></div>
+      <div id="my-turn-indicator" class="turn-indicator"></div></div></div>
+    <div id="sk2">
+      <div id="enemy" class="stats hidden">
+      <div class="nick"></div>
+      <div id="enemy-turn-indicator" class="turn-indicator"></div></div>
+    </div>
+    <div id="sk3" class="hidden"></div>
+     <!-- onclick="javascript:stopProp()" -->
+    <!-- <button id="change-state" class="button" onclick="javascript:changeState()">State</button> -->
+   <script>
+   </script>
+ </div>
+  <script src="/socket.io/socket.io.js"></script>
+   <script src="onclicks.js" type="text/javascript"></script>
+   <script src="p5.min.js" type="text/javascript"></script>
+   <script src="ship.js" type="text/javascript"></script>
+   <script src="sketch.js" type="text/javascript"></script>
+   <script src="game.js" type="text/javascript"></script>
+   <script src="state.js" type="text/javascript"></script>
+</body>
+</html>
