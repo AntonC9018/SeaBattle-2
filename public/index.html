@@ -20,6 +20,15 @@
       <div id="enemy-turn-indicator" class="turn-indicator"></div></div>
     </div>
     <div id="sk3" class="hidden"></div>
+    <div id="chat">
+      <div class="title">CHAT</div>
+      <div id="history"></div>
+      <form id="message" action="javascript:sendmsg()">
+        <input id="message-content"></input>
+        <input type="submit" value="Submit">
+      </form>
+    </div>
+    <!-- <div id="sk4"></div> -->
      <!-- onclick="javascript:stopProp()" -->
     <!-- <button id="change-state" class="button" onclick="javascript:changeState()">State</button> -->
    <script>
@@ -32,5 +41,6 @@
    <script src="sketch.js" type="text/javascript"></script>
    <script src="game.js" type="text/javascript"></script>
    <script src="state.js" type="text/javascript"></script>
+   <!-- <script src="endscreen.js" type="text/javascript"></script> -->
 </body>
 </html>

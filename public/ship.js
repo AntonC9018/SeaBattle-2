@@ -136,6 +136,15 @@ class Ship {
       this.meetsCriteria = true;
       return;
     }
+    for (let ship of myNavy.ships) {
+      for (let i of myNavy.calcAdjacent(ship)) {
+        for (let j of this.inds) {
+          if (i[0] === j['x'] && i[1] === j['y']) {
+            return this.meetsCriteria = false;
+          }
+        }
+      }
+    }
     let w = this.width();
     let h = this.height();
     if (w < h) {

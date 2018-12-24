@@ -65,6 +65,10 @@ button.pass {
   display: none;
 }
 
+#sk2 > .hidden {
+  padding: 0;
+}
+
 #sk3.waiting, #sk3.ready, #sk3.fail {
   background-color: rgb(168, 168, 168, 0.5);
   position: absolute;
@@ -80,4 +84,59 @@ button.pass {
   background-color: rgb(147, 230, 187);
 }
 #enemy.nick {
+}
+
+
+#message {
+  width: 400px;
+  height: 50px;
+  padding-left: 10px;
+  padding-top: 10px;
+  background-color: rgb(199, 242, 238);
+}
+
+#chat {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 410px;
+  height: 240px;
+  border: 1px solid black;
+}
+
+#history {
+  width: 400px;
+  height: 150px;
+  padding-left: 10px;
+  padding-top: 10px;
+  overflow: auto;
+  background-color: rgb(240, 203, 234);
+}
+
+#chat .title {
+  width: 400px;
+  height: 20px;
+  text-align: center;
+}
+
+#message-content {
+  width: 300px;
+  height: 30px;
+  float: left;
+}
+
+span.mine {
+  background-color: rgb(240, 230, 182)
+}
+
+span.enemy {
+  background-color: rgb(186, 241, 171);
+}
+
+#sk4 {
+  position: absolute;
+  top: 50px;
+  left: 50px;
+  width: 500px;
+  height: 500px;
 }

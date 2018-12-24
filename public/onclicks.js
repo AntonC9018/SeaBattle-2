@@ -68,3 +68,23 @@ function start() {
   startGame();
 
 }
+
+
+function sendmsg() {
+  if (!socket) return;
+  let msgcont = document.getElementById('message-content');
+  let msg = msgcont.value;
+  msgcont.value = '';
+
+  let div = document.getElementById('history');
+
+  let span = document.createElement('span');
+  span.classList.add('mine');
+  span.innerHTML = msg;
+  div.innerHTML += '<br>' + nick.slice(8) + ':';
+  div.append(span);
+
+  span.scrollIntoView();
+
+  socket.emit('chat', msg);
+}

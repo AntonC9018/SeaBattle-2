@@ -1,4 +1,5 @@
 const Game = require('./models/Game.js')
+const mongoose = require('mongoose');
 module.exports = function(db) {
   return {
     // db: db,
@@ -6,6 +7,7 @@ module.exports = function(db) {
 
     // new game (games)
     game: function() {
+      if (mongoose.readyState === 0) return null;
 
       return new Promise((resolve, reject) => {
 
@@ -139,9 +141,12 @@ module.exports = function(db) {
     },
 
     end: function(id) {
-      if (this.runningGames.includes(id)) {
-        Game.remove({_id: id})
-      }
+      for (let i = 0; i < this.runningGames.length; i++)
+        if (this.runningGames[i] === id) {
+          Game.findByIdAndRemove(id);
+          this.runningGames.splice(i, 1);
+          return;
+        }
     }
   }
 }

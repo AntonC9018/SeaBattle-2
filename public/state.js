@@ -166,7 +166,7 @@ function pass(i) {
 
   let enemydiv = document.getElementById('enemy-turn-indicator');
   enemydiv.style.backgroundColor = 'white';
-  setTimeout(() => enemydiv.style.backgroundColor = colors[i === 0 ? 1 : 0], duration);
+  setTimeout(() => enemydiv.style.backgroundColor = colors[i === undefined ? i : (i === 0 ? 1 : 0)], duration);
 }
 
 

@@ -5,7 +5,7 @@ const WIDTH = 10;
 const HEIGHT = 10;
 const SM = 5;
 var ingame; // making ships / destroying ships
-var debugMode = true;
+var debugMode = false;
 
 const CRITERIA = {
   '4.1': 1,
@@ -186,13 +186,16 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
         p.handleClick = function(I, J) {
           if (!ingame) {
             if (p.shipCreation.length === 0) {
+              if (!p.isEmpty(I, J, true)) return;
               p.shipCreation.push([I, J]);
               p.silhouette = true;
             } else
             // select ends of the future ship
             if (p.shipCreation.length === 1 && p.shipSilhouette.meetsCriteria) {
+              if (!p.isEmpty(I, J, true)) return;
               p.shipCreation.push([I, J]);
               p.silhouette = false;
+              p.shipSilhouette = null;
 
               // create the actual ship
               let ends = p.matchEnds(p.shipCreation);
@@ -205,16 +208,8 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
           }
       }
 
-        p.keyPressed = function(event) {
-          if (event.keyCode === 32) {
-            p.shipCreation = [];
-            p.shipSilhouette = null;
-            p.silhouette = false;
-          }
-        }
-
         // finds out if the space is empty
-        p.isEmpty = function(x, y) {
+        p.isEmpty = function(x, y, notsilh) {
           if (x > WIDTH || y > HEIGHT || x < 0 || y < 0) return;
           // check for ships
           for (let ship of p.ships) {
@@ -223,7 +218,7 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
               return false;
             }
           }
-          if (p.shipSilhouette &&
+          if (!notsilh && p.shipSilhouette &&
             x >= p.shipSilhouette.start[0] && x <= p.shipSilhouette.finish[0] &&
             y >= p.shipSilhouette.start[1] && y <= p.shipSilhouette.finish[1]) {
             return false;
@@ -284,7 +279,6 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
                 p.end(deadShip);
                 if (arr.length === 0) {
                   eff.win = true;
-                  lose();
                 }
               }
               result = eff;
@@ -464,3 +458,17 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
 
   }
 }
+
+
+window.addEventListener('keypress', function(event) {
+  if (ingame) return;
+  if (event.which === 32) {
+    if (myNavy.shipSilhouette) {
+      myNavy.shipCreation = [];
+      myNavy.shipSilhouette = null;
+      myNavy.silhouette = false;
+    } else {
+      myNavy.ships.splice(-1, 1);
+    }
+  }
+})
