@@ -4,43 +4,54 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sea Battle</title>
-  <link rel="stylesheet" href="css.css">
+  <link rel="stylesheet" href="css/css.css">
 </head>
 <body>
 
-     <button class="button start">Start</button>
-     <!-- <button class="button pass" onclick="javascript:pass()">Pass</button> -->
   <div id="root">
-    <div id="sk1">
-      <div class="stats"><div class="nick" contenteditable="true"></div>
-      <div id="my-turn-indicator" class="turn-indicator"></div></div></div>
-    <div id="sk2">
-      <div id="enemy" class="stats hidden">
-      <div class="nick"></div>
-      <div id="enemy-turn-indicator" class="turn-indicator"></div></div>
+
+    <div class="game">
+      <div id="myNavy">
+        <div class="stats">
+        <div class="nick" contenteditable="true"></div>
+        <button id="random-nick" onclick="randomNick()">R</button>
+        <div id="my-turn-indicator" class="turn-indicator"></div>
+        </div></div>
+
+      <div id="enemyNavy" class="hidden">
+        <div id="enemy" class="stats">
+        <div class="nick"></div>
+        <div id="enemy-turn-indicator" class="turn-indicator"></div></div>
+
+      </div>
+      <div id="stateScreen" class="hidden"></div>
     </div>
-    <div id="sk3" class="hidden"></div>
-    <div id="chat">
-      <div class="title">CHAT</div>
-      <div id="history"></div>
-      <form id="message" action="javascript:sendmsg()">
-        <input id="message-content"></input>
-        <input type="submit" value="Submit">
-      </form>
-    </div>
-    <!-- <div id="sk4"></div> -->
-     <!-- onclick="javascript:stopProp()" -->
-    <!-- <button id="change-state" class="button" onclick="javascript:changeState()">State</button> -->
-   <script>
-   </script>
+
+    <button class="button start">Start</button>
+
  </div>
+ <div id="chat">
+   <div id="chatheader">CHAT</div>
+   <div id="history"></div>
+   <form id="message" action="javascript:sendmsg()">
+     <input id="message-content"></input>
+     <input type="submit" value="Submit" class="hidden">
+   </form>
+ </div>
+ <script src="game/constants.js" type="text/javascript"></script>
   <script src="/socket.io/socket.io.js"></script>
    <script src="onclicks.js" type="text/javascript"></script>
-   <script src="p5.min.js" type="text/javascript"></script>
-   <script src="ship.js" type="text/javascript"></script>
-   <script src="sketch.js" type="text/javascript"></script>
-   <script src="game.js" type="text/javascript"></script>
-   <script src="state.js" type="text/javascript"></script>
+   <script src="lib/p5.min.js" type="text/javascript"></script>
+   <script src="game/ship.js" type="text/javascript"></script>
+   <script src="game/sketch.js" type="text/javascript"></script>
+   <script src="game/game.js" type="text/javascript"></script>
+   <script src="game/state.js" type="text/javascript"></script>
    <!-- <script src="endscreen.js" type="text/javascript"></script> -->
+   <script src="lib/RandomNick.js" type="text/javascript"></script>
+   <script src="lib/draggable.js" type="text/javascript"></script>
+   <script type="text/javascript">
+     //Make the chat div element draggagle:
+     dragElement(document.getElementById("chat"));
+   </script>
 </body>
 </html>

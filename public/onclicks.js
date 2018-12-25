@@ -1,6 +1,6 @@
 // tick — waiting
 function changeState(state) {
-  let el = document.getElementById('sk3');
+  let el = document.getElementById('stateScreen');
   let cl = el.className;
 
   if (state) {
@@ -19,8 +19,8 @@ window.addEventListener('resize', setOffset);
 
 // offset stateScreen (see state.js)
 function setOffset() {
-  let elstate = document.getElementById('sk3');
-  let elsket = document.querySelector('#sk2 canvas');
+  let elstate = document.getElementById('stateScreen');
+  let elsket = document.querySelector('#enemyNavy canvas');
 
   if (!elsket) return;
 
@@ -34,15 +34,22 @@ function setOffset() {
 
 // create board for enemy navy
 function board() {
-  enemyNavy = new p5(sketch(false), window.document.getElementById('sk2'));
+  enemyNavy = new p5(sketch(false), window.document.getElementById('enemyNavy'));
 }
 
 // on "start"-button click
 function start() {
+  if (!debugging) {
+    for (let key of Object.keys(myNavy.criteria)) {
+      if (myNavy.criteria[key] !== 0) {
+        return;
+      }
+    }
+  }
 
   myNavy.shipSilhouette = null;
 
-  let enemy = document.getElementById('enemy');
+  let enemy = document.getElementById('enemyNavy');
   enemy.classList.remove('hidden');
 
   this.removeEventListener('click', start);
@@ -62,6 +69,8 @@ function start() {
   el.setAttribute('contenteditable', 'false');
   nick = salt() + el.innerHTML;
 
+  let rn = document.getElementById('random-nick')
+  if (rn) rn.remove()
 
   ingame = true; // change game state when button is clicked
 
@@ -71,7 +80,7 @@ function start() {
 
 
 function sendmsg() {
-  if (!socket) return;
+  if (!ingame) return;
   let msgcont = document.getElementById('message-content');
   let msg = msgcont.value;
   msgcont.value = '';
@@ -87,4 +96,8 @@ function sendmsg() {
   span.scrollIntoView();
 
   socket.emit('chat', msg);
+}
+
+function randomNick() {
+  document.querySelector('#myNavy .nick').innerHTML = randName();
 }

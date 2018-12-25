@@ -79,7 +79,7 @@ function installSocket() {
 
 // at start
 function setup() {
-  myNavy = new p5(sketch(true), window.document.getElementById('sk1'));
+  myNavy = new p5(sketch(true), window.document.getElementById('myNavy'));
   document.querySelector('.start').addEventListener('click', start);
 }
 
@@ -176,13 +176,14 @@ function win() {
 }
 
 function refresh() {
-  document.querySelector('#sk1 canvas').remove();
-  document.querySelector('#sk2 canvas').remove();
+  if (!ingame) return;
+  document.querySelector('#myNavy canvas').remove();
+  document.querySelector('#enemyNavy canvas').remove();
 
-  let enemy = document.getElementById('enemy');
+  let enemy = document.getElementById('enemyNavy');
   enemy.classList.add('hidden');
   enemyNavy = '';
-  enemy.children[0].innerHTML = '';
+  document.querySelector('#enemyNavy .nick').innerHTML = '';
 
   let startbtn = document.querySelector('.button.start');
   startbtn.classList.remove('hidden');

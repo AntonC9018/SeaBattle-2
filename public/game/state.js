@@ -1,14 +1,3 @@
-const STATE_HIDDEN = 0
-STATE_WAITING = 1
-STATE_READY = 2
-STATE_FAIL = 3;
-
-const stateClasses = [
-  'hidden',
-  'waiting',
-  'ready',
-  'fail'
-]
 
 var stateScreen = new p5(function(p) {
     p.setup = function() {
@@ -144,7 +133,7 @@ var stateScreen = new p5(function(p) {
       p.CROSS = false;
     }
   },
-  document.getElementById('sk3'));
+  document.getElementById('stateScreen'));
 
 function pass(i) {
   if (i === undefined) i = initiative;

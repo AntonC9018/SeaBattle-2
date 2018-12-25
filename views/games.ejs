@@ -5,10 +5,31 @@
   </head>
   <body>
     <ul>
+      <script>
+        function chunk(arr, l) {
+          let r = []
+          for (let i = 0; i < arr.length; i+=l) {
+            r.push(arr.slice(i, i + l));
+          }
+          return r;
+        }
+        var games = [];
+      </script>
       <% if (games) { %>
       <% games.forEach(function(game) { %>
+        <script>
+          boards =
+          obj = {
+            players: "<%= game.players %>".split(','),
+            turn: <%= game.turn %>,
+            boards: chunk(chunk([<%= game.boards %>], 10), 10),
+            id: "<%= game.id %>",
+            initiative: <%= game.initiative %>
+          }
+          games.push(obj);
+        </script>
       <li>
-        <div>
+        <div id="<%= game.id %>">
           <span style="color:red"><%= game.players[0].slice(8) %></span> vs
           <span style="color:blue"><%= game.players[1].slice(8) %></span><br>
           turn: <%= game.turn %><br>
@@ -21,7 +42,10 @@
 
     </ul>
   </body>
-  <script src="controlTime.js">
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="update.js"></script>
+  <script src="../game/sketch.js" type="text/javascript">
 
   </script>
+  <script src="controlTime.js"></script>
 </html>

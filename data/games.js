@@ -1,9 +1,12 @@
 const Game = require('./models/Game.js')
 const mongoose = require('mongoose');
+const _ = require('lodash');
+
 module.exports = function(db) {
   return {
     // db: db,
     runningGames: [],
+    reqs: {},
 
     // new game (games)
     game: function() {
@@ -18,7 +21,9 @@ module.exports = function(db) {
             initiative: 0, // 0 is first player 1 second
             request: null,
             response: null,
-            start: Date.now()
+            start: Date.now(),
+            boards: [_.chunk(_.fill(Array(100), 0), 10)
+              ,_.chunk(_.fill(Array(100), 0), 10)]
           });
           game.save((err, g) => {
             this.runningGames.push(g._id.toString());
@@ -27,46 +32,19 @@ module.exports = function(db) {
           })
 
         } else {
-          this._game(Array.from(arguments))
-            .then(res => resolve(res))
+          reject('Invalid parameters')
         }
       })
     },
 
-    // Recursive function
-    _game: function(data, result) {
-      if (!result) result = [];
+    getGame: function(id) {
+      let done = false;
 
       return new Promise((resolve, reject) => {
-
-          this.game(data[0])
-            .then((id) => {
-              result.push(id);
-
-              if (data.length === 1) {
-                resolve(result);
-              } else {
-                this._game(data.slice(1), result)
-                .then((res) => {
-                  resolve(res);
-                })
-              }
-            })
-        })
-    },
-
-    getGame: function(id) {
-      id = id.toString();
-      let done = false;
-      let curr = this.runningGames;
-
-      return new Promise(function(resolve, reject) {
-        for (let i = 0; i < curr.length; i++) {
-          if (curr[i] == id) {
+        for (let i = 0; i < this.runningGames.length; i++) {
+          if (this.runningGames[i] == id) {
             done = true;
-            Game.findOne({
-              '_id': id
-            }, function(err, res) {
+            Game.findOne({ '_id': id }, (err, res) => {
               resolve(res);
               if (err) reject(err);
             })
@@ -79,24 +57,15 @@ module.exports = function(db) {
     // return all running games
     list: function() {
       return new Promise((resolve, reject) => {
-
-        if (this.runningGames.length === 0) {
-          resolve(null)
-        } else {
-          this._list(0, [])
-            .then(function(data) {
-              resolve(data);
-            })
-        }
+        if (this.runningGames.length === 0) resolve(null)
+        else this._list(0, []).then(data => resolve(data))
       })
     },
 
     // auxiliary recursive function
     _list: function(index, result) {
       return new Promise((resolve, reject) => {
-        Game.findOne({
-          '_id': this.runningGames[index]
-        }, (err, res) => {
+        Game.findOne({ '_id': this.runningGames[index] }, (err, res) => {
           result.push(res);
 
           if (index === this.runningGames.length - 1) {
@@ -147,6 +116,28 @@ module.exports = function(db) {
           this.runningGames.splice(i, 1);
           return;
         }
+    },
+
+    update: function (id, data) {
+      new Promise(function(resolve, reject) {
+        if (data.i !== undefined) {
+          console.log(data);
+          this.reqs[id] = data;
+          resolve(false);
+        } else {
+          let field = `boards.${this.reqs[id].token}.${this.reqs[id].i}.${this.reqs[id].j}`;
+          console.log(field);
+          let $set = {};
+          $set[field] = data.hit ? 2 : 1;
+          Game.update({ "_id": id }, { $set },
+          (err, res) => {
+            if (err) reject(err);
+            else resolve(this.reqs[id]);
+            console.log('Error:' + err);
+            console.log('Result: ' + res);
+          })
+        }
+      });
     }
   }
 }

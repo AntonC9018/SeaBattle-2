@@ -7,22 +7,27 @@ class Ship {
     }
     this.start = start;
     this.finish = finish;
-    this.pos = [];
     this.inds = [];
     for (let x = start[0]; x <= finish[0]; x++) {
       for (let y = start[1]; y <= finish[1]; y++) {
-        this.pos.push({
-          x: x * SIZE,
-          y: y * SIZE,
-          alive: true
-        });
         this.inds.push({
           x,
-          y
+          y,
+          alive: true
         });
       }
     }
+
+    let w = this.width();
+    let h = this.height();
+    if (w < h) {
+      let t = w;
+      w = h;
+      h = t;
+    }
+    this.key = `${w}.${h}`;
   }
+
   show(p) {
     p.stroke(0);
     p.strokeWeight(1);
@@ -53,17 +58,20 @@ class Ship {
     p.stroke(184, 23, 23);
     p.strokeWeight(3);
 
-    for (let po of this.pos) {
+    for (let i of this.inds) {
       // cross out dead cells
-      if (!po.alive) {
-        p.line(po.x + SM, po.y + SM,
-          po.x + SIZE - SM, po.y + SIZE - SM);
-        p.line(po.x + SIZE - SM, po.y + SM,
-          po.x + SM, po.y + SIZE - SM);
+      if (!i.alive) {
+        let posx = i.x * SIZE;
+        let posy = i.y * SIZE;
+        p.line(posx + SM, posy + SM,
+          posx + SIZE - SM, posy + SIZE - SM);
+        p.line(posx + SIZE - SM, posy + SM,
+          posx + SM, posy + SIZE - SM);
       }
     }
   }
   // check is mouse (any coordinate) is inside this ship
+  // shoot the ship and response with the effects
   shoot(x, y) {
     let dead = true;
     let result = {
@@ -71,14 +79,17 @@ class Ship {
       kill: null,
       win: false
     };
-    for (let po of this.pos) {
-      if (!result.hit && po.x < x && po.x + SIZE > x
-        && po.y < y && po.y + SIZE > y) {
-        po.alive = false;
+    for (let i of this.inds) {
+      if (!result.hit && i.x === x && i.y === y) {
+        i.alive = false;
         result.hit = true;
         result.kill = { start: this.start, finish: this.finish }
-      } else {
-        if (po.alive) dead = false;
+      }
+      else if (i.alive) {
+        dead = false;
+        if (result.hit) {
+          break;
+        }
       }
     }
     if (!dead) {
@@ -96,8 +107,8 @@ class Ship {
       bots: []
     };
 
-    let s = {x: this.start[0], y: this.start[1]};
-    let f = {x: this.finish[0], y: this.finish[1]};
+    let s = { x: this.start[0], y: this.start[1] };
+    let f = { x: this.finish[0], y: this.finish[1] };
 
     r.corns = [s,
       { x: f.x, y: s.y },
@@ -131,30 +142,4 @@ class Ship {
     return w > h ? w : h;
   }
 
-  meet(criteria) {
-    if (CRITERIA === 'any') {
-      this.meetsCriteria = true;
-      return;
-    }
-    for (let ship of myNavy.ships) {
-      for (let i of myNavy.calcAdjacent(ship)) {
-        for (let j of this.inds) {
-          if (i[0] === j['x'] && i[1] === j['y']) {
-            return this.meetsCriteria = false;
-          }
-        }
-      }
-    }
-    let w = this.width();
-    let h = this.height();
-    if (w < h) {
-      let t = w;
-      w = h;
-      h = t;
-    }
-    if (criteria[`${w}.${h}`] && criteria[`${w}.${h}`] >= 0) {
-      this.meetsCriteria = true;
-    }
-    else this.meetsCriteria = false;
-  }
 }

@@ -1,51 +1,3 @@
-const SIZE = 35;
-const OFFSET = SIZE / 8;
-const HALFSIZE = SIZE / 2;
-const WIDTH = 10;
-const HEIGHT = 10;
-const SM = 5;
-var ingame; // making ships / destroying ships
-var debugMode = false;
-
-const CRITERIA = {
-  '4.1': 1,
-  '3.1': 2,
-  '2.1': 3,
-  '1.1': 4
-}
-
-// const CRITERIA = 'any';
-
-
-function criteria(navy) {
-  if (CRITERIA === 'any') {
-    return 'any';
-  }
-  let current = Object.assign({}, CRITERIA);
-
-  for (let ship of navy) {
-    let width = ship.width();
-    let height = ship.height();
-
-    if (width < height) {
-      let t = width;
-      width = height;
-      height = t;
-    }
-
-    {
-      let newkey = `${width}.${height}`;
-      if (current[newkey] === undefined) {
-        console.log('Not allowed.');
-        return;
-      }
-      current[newkey] --;
-      if (current[newkey] < 0) console.log('Error. Too many ' + newkey + ' ships.');
-    }
-  }
-
-  return current;
-}
 
 var sketch = function(myboard) { // myboard indicates if it is your board or your opponent's
 
@@ -143,11 +95,13 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
 
         p.gaps = []; // shot empty spaces
 
-        p.turn = 0;
-
         // hint the form of the future ship while making it
         p.shipSilhouette = null;
         p.silhouette = false;
+
+        p.occupiedCells = [];
+
+        p.criteria = Object.assign({}, CRITERIA);
 
 
         // draw your navy and the gaps
@@ -176,40 +130,107 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
         p.drawSilhouette = function(x, y) {
           if (p.silhouette) {
             let ends = p.matchEnds([ p.shipCreation[0], [x, y] ]);
-            p.shipSilhouette = new Ship(ends.start, ends.finish, true);
-            p.shipSilhouette.meet(criteria(p.ships));
+
+            if (!p.shipSilhouette ||
+
+            ( p.shipSilhouette.start[0]  !== ends.start[0]  ||
+              p.shipSilhouette.start[1]  !== ends.start[1]  ||
+              p.shipSilhouette.finish[0] !== ends.finish[0] ||
+              p.shipSilhouette.finish[1] !== ends.finish[1]   ))
+
+            {
+              p.shipSilhouette = new Ship(ends.start, ends.finish, true);
+              p.meetCriteria();
+            }
           }
           p.noStroke();
+        }
+
+        p.updateCriteria = function(ship) {
+          if (CRITERIA === 'any') {
+            return;
+          }
+
+          if (p.criteria[ship.key] === undefined) {
+            throw 'Such ship configuration is not permitted';
+          }
+
+          p.criteria[ship.key] --;
+
+          if (p.criteria[ship.key] < 0) {
+            throw 'Error. Too many ' + ship.key + ' ships.';
+          }
+        }
+
+        p.meetCriteria = function() {
+
+          if (debugging) return p.shipSilhouette.meetsCriteria = true;
+
+          if (CRITERIA !== 'any') {
+
+            // Check the dimensions of the ship
+            let key = p.shipSilhouette.key;
+            if (!(p.criteria[key] && p.criteria[key] > 0)) {
+              return p.shipSilhouette.meetsCriteria = false;
+            }
+          }
+
+          // Check availability of spaces
+          for (let cell of p.occupiedCells) {
+            for (let i of p.shipSilhouette.inds) {
+              if (i.x === cell.x && i.y === cell.y) {
+                return p.shipSilhouette.meetsCriteria = false;
+              }
+            }
+          }
+
+          p.shipSilhouette.meetsCriteria = true;
         }
 
         // resolve mouse click event
         p.handleClick = function(I, J) {
           if (!ingame) {
             if (p.shipCreation.length === 0) {
-              if (!p.isEmpty(I, J, true)) return;
+              if (!p.isEmpty(I, J)) return;
               p.shipCreation.push([I, J]);
               p.silhouette = true;
             } else
             // select ends of the future ship
             if (p.shipCreation.length === 1 && p.shipSilhouette.meetsCriteria) {
-              if (!p.isEmpty(I, J, true)) return;
+
+              // remove the silhouette
               p.shipCreation.push([I, J]);
               p.silhouette = false;
               p.shipSilhouette = null;
 
               // create the actual ship
               let ends = p.matchEnds(p.shipCreation);
-              p.ships.push(new Ship(ends.start, ends.finish));
+              let newborn = new Ship(ends.start, ends.finish);
+              p.ships.push(newborn);
               p.shipCreation = [];
+
+              // Update occupiedCells
+              for (let i of newborn.inds) {
+                p.occupiedCells.push({ x: i.x, y: i.y });
+              }
+              let adj = p.calcAdjacent(newborn);
+              for (let i of adj) {
+                p.occupiedCells.push({ x: i[0], y: i[1] });
+              }
+
+              newborn.span = newborn.inds.length + adj.length;
+
+              // update criteria
+              p.updateCriteria(newborn);
             }
           }
-          else if (debugMode) {
+          else if (debugging) {
             p.shoot(I, J);
           }
       }
 
         // finds out if the space is empty
-        p.isEmpty = function(x, y, notsilh) {
+        p.isEmpty = function(x, y, silh) {
           if (x > WIDTH || y > HEIGHT || x < 0 || y < 0) return;
           // check for ships
           for (let ship of p.ships) {
@@ -218,7 +239,7 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
               return false;
             }
           }
-          if (!notsilh && p.shipSilhouette &&
+          if (silh && p.shipSilhouette &&
             x >= p.shipSilhouette.start[0] && x <= p.shipSilhouette.finish[0] &&
             y >= p.shipSilhouette.start[1] && y <= p.shipSilhouette.finish[1]) {
             return false;
@@ -235,7 +256,9 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
 
         p.matchEnds = function(sc) {
             let start = [];
-            let finish = []; { // ensure the start has the least coordinates and
+            let finish = [];
+
+            { // ensure the start has the least coordinates and
               // the finish has the greatest ones
 
               // check X coordinates (indeces)
@@ -268,23 +291,26 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
           let result = null;
 
           // check if hit a ship
-          p.ships.forEach((ship, i, arr) => {
-            let eff = ship.shoot(x * SIZE + 1, y * SIZE + 1);
-            console.log('check for ' + i + 'th ship. effect: ');
-            console.log(eff);
+          for (let i = 0; i < p.ships.length; i++) {
+
+            let eff = p.ships[i].shoot(x, y);
+
             if (eff.hit) {
+
               if (eff.kill !== null) {
-                let deadShip = arr.splice(i, 1)[0];
+                let deadShip = p.ships.splice(i, 1)[0];
                 p.deadShips.push(deadShip);
                 p.end(deadShip);
-                if (arr.length === 0) {
+
+                if (p.ships.length === 0) {
                   eff.win = true;
                 }
               }
+
               result = eff;
-              return;
+              break;
             }
-          })
+          }
 
           if (result) return result;
 
@@ -330,10 +356,6 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
 
       } else {
 
-        const EMPTYCELL = 0
-        GAPCELL = 1
-        SHIPCELL = 2;
-
 
         p.cells = new Array(WIDTH + 1);
         let space = new Array(HEIGHT + 1);
@@ -346,17 +368,18 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
         p.navy = function() {
           for (let i = 0; i < WIDTH; i++) {
             for (let j = 0; j < HEIGHT; j++) {
+
               switch (p.cells[i][j]) {
-                case EMPTYCELL: // empty cell
+                case EMPTY:
                   break;
 
-                case GAPCELL: // a gap
+                case GAP:
                   p.fill(12, 103, 136);
                   p.noStroke();
                   p.rect(i * SIZE + 1, j * SIZE + 1, SIZE - 1, SIZE - 1);
                   break;
 
-                case SHIPCELL: // a ship
+                case SHIP:
                   p.stroke(184, 23, 23);
                   p.strokeWeight(3);
                   let x = i * SIZE + 1;
@@ -365,9 +388,6 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
                     x + SIZE - SM, y + SIZE - SM);
                   p.line(x + SIZE - SM, y + SM,
                     x + SM, y + SIZE - SM);
-                  break;
-
-                default:
                   break;
               }
             }
@@ -395,7 +415,7 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
         p.kill = function(start, finish) {
           let cs = p.calcAdjacent(new Ship(start, finish, false));
           for (let c of cs) {
-            p.cells[c[0]][c[1]] = GAPCELL;
+            p.cells[c[0]][c[1]] = GAP;
           }
         }
 
@@ -431,7 +451,7 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
         // Hovering
         if (x <= WIDTH && y <= HEIGHT &&
           x >= 0 && y >= 0)
-          if (p.isEmpty(x, y)) {
+          if (p.isEmpty(x, y, true)) {
             p.fill(240, 238, 24);
             p.rect(x * SIZE + 1, y * SIZE + 1,
               SIZE - 1, SIZE - 1);
@@ -468,7 +488,11 @@ window.addEventListener('keypress', function(event) {
       myNavy.shipSilhouette = null;
       myNavy.silhouette = false;
     } else {
-      myNavy.ships.splice(-1, 1);
+      if (myNavy.ships.length === 0) return;
+      let ship = myNavy.ships.splice(-1, 1)[0];
+      // update occupied cells
+      myNavy.occupiedCells.splice(-ship.span, ship.span);
+      myNavy.criteria[ship.key]++
     }
   }
 })
