@@ -62,6 +62,8 @@ function installSocket() {
     pass()
 
     changeState(STATE_READY)
+
+    socket.emit('start')
   })
 
   socket.on('requestOut', function(data) {

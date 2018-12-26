@@ -9,8 +9,8 @@ function salt() {
   return Math.random().toString(36).substr(2, 8);
 }
 
-// play.drop(db)
-play.restore()
+play.drop(db)
+// play.restore()
 
 app.use(express.static(__dirname + '/public'))
 app.set('view engine', 'ejs')
@@ -68,16 +68,15 @@ io.on('connection', function(socket) {
     }
   })
 
-  socket.join('general chat');
+  var ingame = false;
 
   socket.on('chat', (msg, sender) => {
+    if (ingame) return;
     if (!sender) sender = 'anon'
     socket.broadcast.emit('chat', msg, sender)
   })
 
   socket.on('startGame', function(data) {
-
-    socket.leave('general chat');
 
     class G {
       constructor(id, name) {
@@ -102,6 +101,9 @@ io.on('connection', function(socket) {
       token = 0;
       entok = 1;
       queue.push({ game });
+      socket.once('start', function() {
+        ingame = true;
+      })
     } else {
       // set game for you and opponent
       let e = queue.splice(0, 1)[0];
@@ -114,6 +116,7 @@ io.on('connection', function(socket) {
 
       // create game
       play.game([data.name, e.game.names[0]]).then(function(_id) {
+        ingame = true;
         game.id = _id;
         io.to(game.ids[0]).emit('startGame', { id: _id, enemyName: name, initiative: 0 });
         io.to(game.ids[1]).emit('startGame', { id: _id, enemyName: game.names[0], initiative: 1 });
@@ -124,23 +127,19 @@ io.on('connection', function(socket) {
       })
     }
 
-    socket.on('chat', function(msg) {
+    function chat(msg, name) {
+      if (!ingame) return;
       console.log('messaging!');
-      io.to(game.ids[entok]).emit('chat', msg);
-    })
+      io.to(game.ids[entok]).emit('chat', msg, name);
+    }
 
-    socket.on('pint', function(d) {
-      console.log('Says ' + d);
-      console.log('Player ' + name + ' is pinging');
-      console.log('game: ' + JSON.stringify(game));
-      console.log('Initiative: ' + game !== null);
-    })
+    socket.on('chat', chat);
 
     socket.on('requestIn', function(data) {
       if (game.init === token) {
         io.to(game.ids[entok]).emit('requestOut', data);
         data.target = entok;
-        update(game.id, data)
+        update(game.id, data);
       } else {
         console.log('error');
       }
@@ -169,14 +168,14 @@ io.on('connection', function(socket) {
     socket.on('refresh', function() {
       console.log('REFRESHING');
       play.end(game.id);
-      socket.removeAllListeners('chat');
+      socket.removeListener('chat', chat);
       socket.removeAllListeners('pint');
       socket.removeAllListeners('requestIn');
       socket.removeAllListeners('responseIn');
       socket.removeAllListeners('disconnect');
       socket.removeAllListeners('refresh');
       game = null;
-      socket.join('general chat');
+      ingame = false;
     })
   })
 })
