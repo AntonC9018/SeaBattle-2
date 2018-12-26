@@ -1,5 +1,5 @@
 
-var sketch = function(myboard) { // myboard indicates if it is your board or your opponent's
+var sketch = function(myboard, cells) { // myboard indicates if it is your board or your opponent's
 
   return function(p) {
     p.setup = function() {
@@ -209,15 +209,20 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
               p.ships.push(newborn);
               p.shipCreation = [];
 
+
               // Update occupiedCells
+
               for (let i of newborn.inds) {
                 p.occupiedCells.push({ x: i.x, y: i.y });
               }
+
               let adj = p.calcAdjacent(newborn);
               for (let i of adj) {
                 p.occupiedCells.push({ x: i[0], y: i[1] });
               }
 
+
+              newborn.adj = adj;
               newborn.span = newborn.inds.length + adj.length;
 
               // update criteria
@@ -234,6 +239,12 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
           if (x > WIDTH || y > HEIGHT || x < 0 || y < 0) return;
           // check for ships
           for (let ship of p.ships) {
+            if (x >= ship.start[0] && x <= ship.finish[0] &&
+              y >= ship.start[1] && y <= ship.finish[1]) {
+              return false;
+            }
+          }
+          for (let ship of p.deadShips) {
             if (x >= ship.start[0] && x <= ship.finish[0] &&
               y >= ship.start[1] && y <= ship.finish[1]) {
               return false;
@@ -356,12 +367,19 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
 
       } else {
 
+        if (!cells) {
+          let chunk = function(arr, i) {
+            let res = []
+            for (let j = 0; j < arr.length; j += i) {
+              res.push(arr.slice(j, j + i));
+            }
+            return res;
+          }
 
-        p.cells = new Array(WIDTH + 1);
-        let space = new Array(HEIGHT + 1);
-        space.fill(0);
-        for (let i = 0; i < WIDTH + 1; i++) {
-          p.cells[i] = space.slice();
+          let cells = new Array(WIDTH * HEIGHT).fill(0);
+          p.cells = chunk(chunk(cells, HEIGHT), WIDTH)[0];
+        } else {
+          p.cells = cells;
         }
 
         // draw crosses and gaps
@@ -399,9 +417,7 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
 
         // resolve mouse click event
         p.handleClick = function(I, J) {
-          if (p.cells[I][J] === 0 && initiative === 0) {
-            cycle(I, J);
-          }
+          cellClicked(I, J, p);
         }
 
         // finds out if the space is empty
@@ -409,12 +425,10 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
           if (x > WIDTH || y > HEIGHT || x < 0 || y < 0) return;
 
           return p.cells[x][y] === 0;
-          console.log(p.cells);
         }
 
-        p.kill = function(start, finish) {
-          let cs = p.calcAdjacent(new Ship(start, finish, false));
-          for (let c of cs) {
+        p.kill = function(cells) {
+          for (let c of cells) {
             p.cells[c[0]][c[1]] = GAP;
           }
         }
@@ -435,13 +449,15 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
       // and the gaps
       p.navy()
 
-      // check if mouse is off canvas
-      if (p.mouseX > 0 && p.mouseX < p.width &&
-        p.mouseY > 0 && p.mouseY < p.height) {
-
+      // check if inside canvas
+      if (p.mouseX >= p.offSet[0] && p.mouseY >= p.offSet[1] &&
+        p.mouseX < p.width && p.mouseY < p.height) {
         // get row and column
         let x = ~~((p.mouseX - p.offSet[0]) / SIZE);
         let y = ~~((p.mouseY - p.offSet[1]) / SIZE);
+
+        if (x >= WIDTH) return;
+        if (y >= HEIGHT) return;
 
         // create half-transparent ship silhouette (while making a ship)
         p.drawSilhouette(x, y);
@@ -449,50 +465,33 @@ var sketch = function(myboard) { // myboard indicates if it is your board or you
         p.noStroke();
 
         // Hovering
-        if (x <= WIDTH && y <= HEIGHT &&
-          x >= 0 && y >= 0)
-          if (p.isEmpty(x, y, true)) {
-            p.fill(240, 238, 24);
-            p.rect(x * SIZE + 1, y * SIZE + 1,
-              SIZE - 1, SIZE - 1);
-          } else {
-            p.fill(240, 238, 24, 90);
-            p.rect(x * SIZE + 1, y * SIZE + 1,
-              SIZE - 1, SIZE - 1);
-          }
+        if (p.isEmpty(x, y, true)) {
+          p.fill(240, 238, 24);
+          p.rect(x * SIZE + 1, y * SIZE + 1,
+            SIZE - 1, SIZE - 1);
+        } else {
+          p.fill(240, 238, 24, 90);
+          p.rect(x * SIZE + 1, y * SIZE + 1,
+            SIZE - 1, SIZE - 1);
+        }
       }
     },
 
 
     p.mouseClicked = function() {
         // check if inside canvas
-        if (p.mouseX < 0 || p.mouseY < 0 ||
-          p.mouseX > p.width || p.mouseY > p.height) return;
+        if (p.mouseX < p.offSet[0] || p.mouseY < p.offSet[1] ||
+          p.mouseX >= p.width || p.mouseY >= p.height) return;
 
         // get row and column
         let I = ~~((p.mouseX - p.offSet[0]) / SIZE);
+        if (I >= WIDTH) return;
+
         let J = ~~((p.mouseY - p.offSet[1]) / SIZE);
+        if (J >= HEIGHT) return;
 
         p.handleClick(I, J);
       }
 
   }
 }
-
-
-window.addEventListener('keypress', function(event) {
-  if (ingame) return;
-  if (event.which === 32) {
-    if (myNavy.shipSilhouette) {
-      myNavy.shipCreation = [];
-      myNavy.shipSilhouette = null;
-      myNavy.silhouette = false;
-    } else {
-      if (myNavy.ships.length === 0) return;
-      let ship = myNavy.ships.splice(-1, 1)[0];
-      // update occupied cells
-      myNavy.occupiedCells.splice(-ship.span, ship.span);
-      myNavy.criteria[ship.key]++
-    }
-  }
-})

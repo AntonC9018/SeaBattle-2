@@ -83,7 +83,7 @@ class Ship {
       if (!result.hit && i.x === x && i.y === y) {
         i.alive = false;
         result.hit = true;
-        result.kill = { start: this.start, finish: this.finish }
+        result.kill = this.adj;
       }
       else if (i.alive) {
         dead = false;

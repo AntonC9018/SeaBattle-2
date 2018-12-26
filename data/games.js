@@ -1,6 +1,6 @@
 const Game = require('./models/Game.js')
 const mongoose = require('mongoose');
-const _ = require('lodash');
+const _ = require('lodash/array');
 
 module.exports = function(db) {
   return {
@@ -22,8 +22,7 @@ module.exports = function(db) {
             request: null,
             response: null,
             start: Date.now(),
-            boards: [_.chunk(_.fill(Array(100), 0), 10)
-              ,_.chunk(_.fill(Array(100), 0), 10)]
+            boards: _.chunk(_.chunk(Array(200),10),10)
           });
           game.save((err, g) => {
             this.runningGames.push(g._id.toString());
@@ -56,27 +55,30 @@ module.exports = function(db) {
 
     // return all running games
     list: function() {
-      return new Promise((resolve, reject) => {
-        if (this.runningGames.length === 0) resolve(null)
-        else this._list(0, []).then(data => resolve(data))
-      })
-    },
 
-    // auxiliary recursive function
-    _list: function(index, result) {
-      return new Promise((resolve, reject) => {
-        Game.findOne({ '_id': this.runningGames[index] }, (err, res) => {
-          result.push(res);
+      let rg = this.runningGames;
 
-          if (index === this.runningGames.length - 1) {
-            resolve(result);
-          } else {
-            this._list(index + 1, result).then(data => {
+      // auxiliary recursive function
+      function _list(index, result) {
+        return new Promise((resolve, reject) => {
+          Game.findOne({ '_id': rg[index] }, (err, res) => {
+            result.push(res);
+
+            if (index === rg.length - 1) {
               resolve(result);
-              if (err) reject(err);
-            });
-          }
+            } else {
+              _list(index + 1, result).then(data => {
+                resolve(result);
+                if (err) reject(err);
+              });
+            }
+          })
         })
+      }
+
+      return new Promise((resolve, reject) => {
+        if (rg.length === 0) resolve(null)
+        else _list(0, []).then(data => resolve(data))
       })
     },
 
@@ -89,26 +91,11 @@ module.exports = function(db) {
 
     drop: function(db) {
       db.collections.games.drop();
+      this.runningGames = [];
     },
 
-    // end request-respond cycle
-    pass: function(id, ini) {
 
-      return new Promise((resolve, reject) => {
-
-        console.log('Passing initiative to player ' + ini);
-
-        if (this.runningGames.includes(id)) {
-            Game.findOneAndUpdate({ '_id': id },
-            { initiative: ini, $inc: { turn: 1 } },
-            (err, res) => {
-              if (!err) resolve(res)
-              else reject(err)
-            })
-        }
-      })
-    },
-
+    // Delete the game record
     end: function(id) {
       for (let i = 0; i < this.runningGames.length; i++)
         if (this.runningGames[i] === id) {
@@ -118,23 +105,43 @@ module.exports = function(db) {
         }
     },
 
+    // Outsiders can only see boards from enemy's point of view
+    // i.e. cannot see the arrangement of the ships
     update: function (id, data) {
-      new Promise(function(resolve, reject) {
-        if (data.i !== undefined) {
-          console.log(data);
+      return new Promise((resolve, reject) => {
+        if (data.i !== undefined && data.i !== null) {
           this.reqs[id] = data;
+          console.log('Resolving with false');
           resolve(false);
         } else {
-          let field = `boards.${this.reqs[id].token}.${this.reqs[id].i}.${this.reqs[id].j}`;
-          console.log(field);
+          let req = this.reqs[id];
+
+          // cell to shoot
+          let field = `boards.${req.target}.${req.i}.${req.j}`;
+
           let $set = {};
-          $set[field] = data.hit ? 2 : 1;
-          Game.update({ "_id": id }, { $set },
+          let query = { $set };
+
+          if (data.hit) {
+            $set[field] = 2; // set the cell shot to a ship
+            if (data.kill) {
+              for (let cell of data.kill) {
+                let field = `boards.${req.target}.${cell[0]}.${cell[1]}`
+                $set[field] = 1;
+              }
+            }
+          } else {
+            // Pass the initiative and record a turn has passed
+            query.initiative = req.target ? 0 : 1;
+            query.$inc = { turn: 1 }
+            $set[field] = 1; // set the cell shot to a gap
+          }
+
+          Game.update({ "_id": id }, query,
           (err, res) => {
+            console.log('Resolving with ' + JSON.stringify(req));
             if (err) reject(err);
-            else resolve(this.reqs[id]);
-            console.log('Error:' + err);
-            console.log('Result: ' + res);
+            else resolve(req);
           })
         }
       });

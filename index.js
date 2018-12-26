@@ -5,7 +5,11 @@ const db = require('./data/connection.js');
 const port = process.env.PORT || 3000;
 const play = require('./data/games.js')();
 
-// play.drop(n)
+function salt() {
+  return Math.random().toString(36).substr(2, 8);
+}
+
+// play.drop(db)
 play.restore()
 
 app.use(express.static(__dirname + '/public'))
@@ -22,11 +26,46 @@ io.on('connection', function(socket) {
   socket.on('games', function(data) {
     socket.join('games');
 
+    io.to('games').emit('joined', socket.id)
+
+    socket.on('disconnect', () => {
+      console.log('Disconnected');
+    })
+
     // io.to(socket.id).emit('load', play.runningGames);
   })
 
-  socket.on('pint', function() {
-    console.log('Queue: ' + JSON.stringify(queue));
+  let ID;
+
+  socket.on('pint', function(cmd, args) {
+    if (!cmd) console.log('Queue: ' + JSON.stringify(queue));
+    else if (cmd === 'drop') {
+      play.drop(db);
+      console.log('All games deleted');
+    }
+    else if (cmd === 'add') {
+      args[0] = salt() + args[0];
+      args[1] = salt() + args[1];
+      play.game(args).then(id => console.log('Game added. Game id: ' + (ID = id)));
+    }
+    else if (cmd === 'log') {
+      console.log('Queue: ' + JSON.stringify(queue));
+      console.log('Running games: ' + JSON.stringify(play.runningGames));
+      console.log('reqs: ' + JSON.stringify(play.reqs));
+    }
+    else if (cmd === 'end') play.end(ID).then(() => console.log(ID + ' has ended successfully'))
+    else if (cmd === 'list') play.list().then(gs => console.log(gs))
+    else if (cmd === 'update') play.update(ID, { i: 0, j: 0 }).then((r) => console.log('play{}: ' + r));
+    else if (cmd === 'boards') {
+      play.getGame(args).then(r => {
+        console.log(r);
+        console.log(JSON.stringify(r.boards));
+      })
+    }
+    else if (cmd === 'test') {
+      console.log(cmd);
+      io.sockets.in('games').emit(args, 'test', 'test');
+    }
   })
 
   socket.on('startGame', function(data) {
@@ -70,6 +109,8 @@ io.on('connection', function(socket) {
         io.to(game.ids[0]).emit('startGame', { id: _id, enemyName: name, initiative: 0 });
         io.to(game.ids[1]).emit('startGame', { id: _id, enemyName: game.names[0], initiative: 1 });
 
+        play.getGame(_id).then(game => io.sockets.in('games').emit('newGame', game))
+
         console.log('New game started! Players: ' + name.slice(8) + ' and ' + game.names[entok].slice(8));
       })
     }
@@ -89,7 +130,7 @@ io.on('connection', function(socket) {
     socket.on('requestIn', function(data) {
       if (game.init === token) {
         io.to(game.ids[entok]).emit('requestOut', data);
-        data.token = entok;
+        data.target = entok;
         update(game.id, data)
       } else {
         console.log('error');
@@ -134,19 +175,32 @@ io.on('connection', function(socket) {
 // list the games running
 app.get('/games', function(req, res) {
   play.list().then((data) => {
-
-      console.log(data);
     res.render('games.ejs', {
       games: data
     });
   })
 })
 
+app.get('/games/:id', function(req, res) {
+  play.getGame(req.params.id).then((data) => {
+    if (data) {
+      res.render('specificgame.ejs', {
+        game: data
+      });
+    } else {
+      res.end('404')
+    }
+  })
+})
+
 
 function update(id, data) {
-  play.update(game.id, data).then((err, res) => {
+  play.update(id, data).then((res) => {
+    console.log(res);
     if (res) {
-      io.to('games').emit('update', res, data);
+      console.log(res);
+      console.log(id);
+      io.to('games').emit(id, res, data);
     }
   });
 }

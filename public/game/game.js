@@ -1,12 +1,30 @@
 var id;
 var nick;
-var initiative;
+var initiative = undefined;
 
 var myNavy;
 var enemyNavy;
 
 var awaitingReq = false;
 var awaitingRes = false;
+
+
+window.addEventListener('keypress', function(event) {
+  if (event.which === 32) {
+    if (myNavy.shipSilhouette) {
+      myNavy.shipCreation = [];
+      myNavy.shipSilhouette = null;
+      myNavy.silhouette = false;
+    } else {
+      if (ingame) return;
+      if (myNavy.ships.length === 0) return;
+      let ship = myNavy.ships.splice(-1, 1)[0];
+      // update occupied cells
+      myNavy.occupiedCells.splice(-ship.span, ship.span);
+      myNavy.criteria[ship.key]++
+    }
+  }
+})
 
 function salt() {
   return Math.random().toString(36).substr(2, 8);
@@ -28,6 +46,8 @@ function installSocket() {
   })
 
   socket.on('startGame', function(data) {
+
+    console.log('Game started');
     enemyName = data.enemyName.slice(8);
     id = data.id;
     initiative = data.initiative;
@@ -91,11 +111,15 @@ function startGame() {
 
 var latestshot;
 
-function cycle(i, j) {
+function cellClicked(i, j) {
+  console.log('Cell clicked');
+  if (initiative === undefined || (enemyNavy.cells[i][j] !== 0 && initiative !== 0)) return;
+
   if (awaitingReq || awaitingRes) {
     console.log('Awaiting req or res. Shooting not allowed');
     return;
   }
+
   latestshot = { i, j }
   socket.emit('requestIn', latestshot);
   changeState(STATE_WAITING);
@@ -135,7 +159,8 @@ function answerResponse(r) {
     enemyNavy.cells[i][j] = 2;
 
     if (r.kill) {
-      enemyNavy.kill(r.kill.start, r.kill.finish);
+      console.log(r.kill);
+      enemyNavy.kill(r.kill);
       if (r.win) {
         socket.emit('refresh');
         console.log('Calling win() from answerResponse()');
@@ -195,6 +220,6 @@ function refresh() {
   setup();
 }
 
-function ping() {
-  socket.emit('pint', 'hello');
+function ping(meth, msg) {
+  socket.emit('pint', meth, msg);
 }
