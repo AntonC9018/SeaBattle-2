@@ -34,13 +34,13 @@ var socket = io();
 installSocket();
 
 function installSocket() {
-  socket.on('chat', function(msg) {
+  socket.on('chat', function(msg, name) {
     console.log('new message!');
     let div = document.getElementById('history');
     let span = document.createElement('span');
     span.classList.add('enemy');
     span.innerHTML = msg;
-    div.innerHTML += '<br>' + enemyName + ':';
+    div.innerHTML += '<br>' + name + ':';
     div.append(span);
     span.scrollIntoView();
   })

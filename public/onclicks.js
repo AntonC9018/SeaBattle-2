@@ -80,7 +80,6 @@ function start() {
 
 
 function sendmsg() {
-  if (!ingame) return;
   let msgcont = document.getElementById('message-content');
   let msg = msgcont.value;
   msgcont.value = '';
@@ -90,12 +89,18 @@ function sendmsg() {
   let span = document.createElement('span');
   span.classList.add('mine');
   span.innerHTML = msg;
-  div.innerHTML += '<br>' + nick.slice(8) + ':';
+
+  let name = nick ? nick.slice(8) :
+  document.querySelector('#myNavy .nick').innerHTML;
+
+  if (name === '') name = 'anon';
+
+  div.innerHTML += '<br>' + name + ':';
   div.append(span);
 
   span.scrollIntoView();
 
-  socket.emit('chat', msg);
+  socket.emit('chat', msg, name);
 }
 
 function randomNick() {

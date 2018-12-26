@@ -68,7 +68,16 @@ io.on('connection', function(socket) {
     }
   })
 
+  socket.join('general chat');
+
+  socket.on('chat', (msg, sender) => {
+    if (!sender) sender = 'anon'
+    socket.broadcast.emit('chat', msg, sender)
+  })
+
   socket.on('startGame', function(data) {
+
+    socket.leave('general chat');
 
     class G {
       constructor(id, name) {
@@ -167,6 +176,7 @@ io.on('connection', function(socket) {
       socket.removeAllListeners('disconnect');
       socket.removeAllListeners('refresh');
       game = null;
+      socket.join('general chat');
     })
   })
 })
