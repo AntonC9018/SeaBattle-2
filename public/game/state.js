@@ -1,9 +1,20 @@
+const STATE_HIDDEN = 0
+STATE_WAITING = 1
+STATE_READY = 2
+STATE_FAIL = 3;
+
+const stateClasses = [
+  'hidden',
+  'waiting',
+  'ready',
+  'fail'
+]
+
 
 var stateScreen = new p5(function(p) {
     p.setup = function() {
       p.createCanvas(150, 150);
       p.state = STATE_HIDDEN;
-
 
       p.CENTRAL = 10;
       p.OFFSET = 15;

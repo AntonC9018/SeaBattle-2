@@ -1,91 +1,115 @@
 var socket = io();
+var index = 0;
+var lis = [];
+
+socket.emit('games'); // connect to server
+
+// add ongoing games
+socket.emit('get all games');
+socket.on('get all games',
+  data => { if (data) data.map(set) });
+
+// add new games
+socket.on('new game', set);
 
 
-
-socket.emit('games')
-
-socket.on('joined', id => {
-  console.log(id + ' has joined');
-})
-
-if (games)
-for (let game of games) {
+// create li with the game and listen for updates
+function set(game) {
+  add(game);
   listen(game);
 }
 
-socket.on('newGame', game => {
-  let div = document.createElement('div');
-  div.id = game._id;
-  div.innerHTML = `<span style="color:red">${game.players[0].slice(8)}</span> vs
-  <span style="color:blue">${game.players[1].slice(8)}</span><br>
-  turn: <span class="turn">0</span><br>
-  the player <span style="color:yellow">${game.players[0].slice(8)}</span> has initiative<br>
-  id: <span style="font-size:25px;font-style:italic">${game._id}</span><br>
-  time live: <span class="time" style="display:none">${game.start}</span><br>
-  <div class="boards"></div>`
-  let li = document.createElement('li');
-  li.append(div);
-  document.querySelector('ul').append(li);
-  listen(game)
-})
+function span(c, i) {
+  return $('<span>').addClass(c).html(i);
+}
+
+function add(game) {
+  lis.push(
+    $('<li>')
+      .append(span('name-first', game.players[0].slice(8)))
+      .append(span('text', ' vs '))
+      .append(span('name-second', game.players[1].slice(8)))
+      .append(span('text', '<br>turn: '))
+      .append(span('turn', '0'))
+      .append(span('text', '<br>the player'))
+      .append(span('name-playing', game.players[0].slice(8)))
+      .append(span('text', ' has initiative<br>id: '))
+      .append(span('id', game._id))
+      .append(span('text', '<br>time live: '))
+      .append(span('time', game.start))
+      .append($('<br>'))
+      .append($('<div>').addClass('boards'))
+      .appendTo('ul'))
+}
 
 
-const EMPTY = 0
-GAP = 1
-SHIP = 2;
 
-const SIZE = 15,
-OFFSET = SIZE / 8,
-HALFSIZE = SIZE / 2,
-WIDTH = 10,
-HEIGHT = 10,
-SM = 3
+function cellClicked(x, y, p) {
+  console.log('You cannot intervene with the game');
+  console.log(p.cells);
+}
+
+
 
 function ping(meth, msg) {
   socket.emit('pint', meth, msg);
 }
 
-function cellClicked(i, j, p) {
-  console.log('You cannot intervene with the game');
-  console.log(p.cells);
+function C(i, game) {
+  return {
+    SIZE: 15,
+    WIDTH: 10,
+    HEIGHT: 10,
+    CROSS_STROKE: 2,
+    click: cellClicked,
+    type: 'hidden',
+    cells: game.boards[i]
+  }
 }
 
 // start listening for updates of a specific game
 function listen(game) {
-  var el = document.getElementById(game._id);
-  var div = el.querySelector('.boards');
-  var turnEl = el.querySelector('.turn');
+
+  var div = lis[index].find('.boards');
+  var turnEl = lis[index].find('.turn');
   var turn = game.turn;
 
-  div.addEventListener('click', () => {
-    window.open('./' + game._id)
-  })
+  var i = index++;
 
+  div.on('click', () => window.open('./' + game._id))
+
+  // create two boards
   var boards = [];
-
   for (let i = 0; i < 2; i++) {
-    boards.push(new p5(sketch(false, game.boards[i]), div));
+    boards.push(
+      createSketch(
+
+        // define constants for the sketch
+        C(i, game),
+
+        // append sketch to '.boards'
+        div[0]));
   }
 
-  socket.on(game._id, function(request, response) {
-    console.log('UPDATE: ' + JSON.stringify(request) + '\n' + JSON.stringify(response));
+  socket.on(game._id, (req, res) => {
 
-    if (request === 'test' && response === 'test') return;
+    // update cells
+    boards[req.target].set(req.x, req.y, res.hit ? SHIP : GAP);
 
-    boards[request.target].cells[request.i][request.j] = response.hit ? SHIP : GAP;
-
-    if (!response.hit) {
-      el.innerHTML = turn++;
+    // increment turn count
+    if (!res.hit) {
+      turnEl.html(++turn);
     }
 
-    if (response.kill) {
-      for (let cell of response.kill) {
-        boards[request.target].cells[cell[0]][cell[1]] = 1;
-      }
+    // make adjacent cells into gaps on kill
+    if (res.kill) {
+      res.kill.adj.map(
+        c => boards[req.target].set(c.x, c.y, SHIP))
     }
 
-    if (response.win) {
-      el.style.backgroundColor = "rgb(214, 39, 39)";
+    // win event
+    if (res.win) {
+      $('.' + game._id).css('backgroundColor', 'rgb(214, 39, 39)');
       setTimeout(() => el.remove(), 2000);
     }
   })

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title></title>
+  <link rel="stylesheet" href="../css/css.css">
+</head>
+<body>
+
+  <div id="root">
+
+    <div class="game">
+      <div id="myNavy">
+        <div class="stats">
+        <div class="nick" contenteditable="true"></div>
+        <div id="my-turn-indicator" class="turn-indicator"></div>
+        </div></div>
+
+      <div id="enemyNavy">
+        <div id="enemy" class="stats">
+        <div class="nick"></div>
+        <div id="enemy-turn-indicator" class="turn-indicator"></div></div>
+
+      </div>
+      <div id="stateScreen" class="hidden"></div>
+    </div>
+
+
+    <a href="../games"><button class="back">BACK</button></a>
+
+ </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="../lib/p5.min.js" type="text/javascript"></script>
+  <script src="../game/logic.js" type="text/javascript"></script>
+  <script src="../game/graphics.js" type="text/javascript"></script>
+  <script
+  src="https://code.jquery.com/jquery-3.3.1.min.js"
+  integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+  crossorigin="anonymous"></script>
+  <script src="../games/updateOne.js"></script>
+</body>
+</html>

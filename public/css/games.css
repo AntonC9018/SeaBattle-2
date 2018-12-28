@@ -1,0 +1,37 @@
+canvas {
+  padding: 5px; }
+
+.boards {
+  text-align: center;
+  width: 400px;
+  cursor: pointer; }
+
+div, li {
+  -webkit-box-shadow: 4px 5px 4px 0 rgba(0, 0, 0, 0.5);
+  box-shadow: 4px 5px 4px 0 rgba(0, 0, 0, 0.5);
+  background: #d69b28;
+  text-align: center;
+  display: inline-block;
+  padding: 30px;
+  margin: 10px;
+  border: ridge 5px #94d1ac;
+  font-size: 30px; }
+
+.name-first {
+  color: red; }
+
+.name-second {
+  color: blue; }
+
+.name-playing {
+  color: yellow; }
+
+.id {
+  font-size: 25px;
+  font-style: italic; }
+
+.time {
+  display: none; }
+
+ul {
+  list-style-type: none; }

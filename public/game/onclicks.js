@@ -32,16 +32,11 @@ function setOffset() {
   elstate.style.height = coords.height + 'px';
 }
 
-// create board for enemy navy
-function board() {
-  enemyNavy = new p5(sketch(false), window.document.getElementById('enemyNavy'));
-}
-
 // on "start"-button click
 function start() {
-  if (!debugging) {
-    for (let key of Object.keys(myNavy.criteria)) {
-      if (myNavy.criteria[key] !== 0) {
+  if (!myNavy.debugging) {
+    for (let key of Object.keys(myNavy.schema)) {
+      if (myNavy.schema[key] !== 0) {
         return;
       }
     }
@@ -55,8 +50,8 @@ function start() {
   this.removeEventListener('click', start);
   this.classList.add('hidden');
 
-  // create board for enemy navy and
-  board();
+  // create board for enemy navy
+  enemyNavy = createSketch({ type: "hidden", click: cellClicked }, window.document.getElementById('enemyNavy'));
 
   // offset the stateScreen
   setOffset();
@@ -72,7 +67,7 @@ function start() {
   let rn = document.getElementById('random-nick')
   if (rn) rn.remove()
 
-  ingame = true; // change game state when button is clicked
+  myNavy.ingame = true; // change game state when button is clicked
 
   startGame();
 

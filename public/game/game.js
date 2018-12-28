@@ -9,19 +9,21 @@ var awaitingReq = false;
 var awaitingRes = false;
 
 
+function debug(password) {
+  if (password === 123) {
+    myNavy.debugging = true;
+    myNavy.SCHEMA = 'any';
+  }
+}
+
+
 window.addEventListener('keypress', function(event) {
   if (event.which === 32) {
     if (myNavy.shipSilhouette) {
-      myNavy.shipCreation = [];
+      myNavy.shipCreation = null;
       myNavy.shipSilhouette = null;
-      myNavy.silhouette = false;
     } else {
-      if (ingame) return;
-      if (myNavy.ships.length === 0) return;
-      let ship = myNavy.ships.splice(-1, 1)[0];
-      // update occupied cells
-      myNavy.occupiedCells.splice(-ship.span, ship.span);
-      myNavy.criteria[ship.key]++
+      myNavy.undo();
     }
   }
 })
@@ -45,7 +47,7 @@ function installSocket() {
     span.scrollIntoView();
   })
 
-  socket.on('startGame', function(data) {
+  socket.on('start game', function(data) {
 
     console.log('Game started');
     enemyName = data.enemyName.slice(8);
@@ -54,6 +56,8 @@ function installSocket() {
 
     if (initiative === 1) {
       awaitingReq = true;
+    } else {
+      alert('Your game is ready!');
     }
 
     // enemy name container (.nick)
@@ -88,7 +92,7 @@ function installSocket() {
 
     console.log('Enemy disconnected. You\'ve won!');
     socket.emit('refresh');
-    if (!ingame) return;
+    if (!myNavy.ingame) return;
     console.log('Calling win from disconnect');
     win();
   })
@@ -101,35 +105,40 @@ function installSocket() {
 
 // at start
 function setup() {
-  myNavy = new p5(sketch(true), window.document.getElementById('myNavy'));
+  myNavy = createSketch({
+      type: "visible",
+      click: () => console.log('mouse clicked')
+    },
+    document.getElementById('myNavy'));
+
   document.querySelector('.start').addEventListener('click', start);
 }
 
 function startGame() {
   console.log('Starting new game!');
-  socket.emit('startGame', { name: nick });
+  socket.emit('start game', { name: nick });
 }
 
 
 var latestshot;
 
-function cellClicked(i, j) {
+function cellClicked(x, y) {
   console.log('Cell clicked');
-  if (initiative === undefined || (enemyNavy.cells[i][j] !== 0 && initiative !== 0)) return;
+  if (initiative === undefined || enemyNavy.cells[x][y] !== 0 || initiative !== 0) return;
 
   if (awaitingReq || awaitingRes) {
     console.log('Awaiting req or res. Shooting not allowed');
     return;
   }
 
-  latestshot = { i, j }
+  latestshot = { x, y }
   socket.emit('requestIn', latestshot);
   changeState(STATE_WAITING);
   awaitingRes = true;
 }
 
 function answerRequest(data) {
-  let effect = myNavy.shoot(data.i, data.j);
+  let effect = myNavy.shoot(data.x, data.y);
   if (effect === 'error') {
     console.log('some error occured');
   } else {
@@ -150,19 +159,18 @@ function answerRequest(data) {
 function answerResponse(r) {
   awaitingRes = false;
 
-  let i = latestshot.i;
-  let j = latestshot.j;
+  let x = latestshot.x;
+  let y = latestshot.y;
 
-  if (r.hit === true) {
+  if (r.hit) {
 
     changeState(STATE_READY);
     console.log('A ship has been hit!');
 
-    enemyNavy.cells[i][j] = 2;
+    enemyNavy.cells[x][y] = 2;
 
     if (r.kill) {
-      console.log(r.kill);
-      enemyNavy.kill(r.kill);
+      enemyNavy.kill(r.kill.adj);
       if (r.win) {
         socket.emit('refresh');
         console.log('Calling win() from answerResponse()');
@@ -170,12 +178,12 @@ function answerResponse(r) {
       }
     }
 
-  } else if (r.hit === false) {
+  } else {
 
     changeState(STATE_FAIL);
     console.log('An empty space has been hit!');
 
-    enemyNavy.cells[i][j] = 1;
+    enemyNavy.cells[x][y] = 1;
     initiative = 1;
     pass();
 
@@ -203,9 +211,11 @@ function win() {
 }
 
 function refresh() {
-  if (!ingame) return;
+  let enBoard = document.querySelector('#enemyNavy canvas');
+  if (!enBoard) return;
+  enBoard.remove();
+
   document.querySelector('#myNavy canvas').remove();
-  document.querySelector('#enemyNavy canvas').remove();
 
   let enemy = document.getElementById('enemyNavy');
   enemy.classList.add('hidden');

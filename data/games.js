@@ -22,7 +22,7 @@ module.exports = function(db) {
             request: null,
             response: null,
             start: Date.now(),
-            boards: _.chunk(_.chunk(Array(200),10),10)
+            boards: _.chunk(_.chunk(_.fill(Array(200), 0), 10), 10)
           });
           game.save((err, g) => {
             this.runningGames.push(g._id.toString());
@@ -56,15 +56,13 @@ module.exports = function(db) {
     // return all running games
     list: function() {
 
-      let rg = this.runningGames;
-
       // auxiliary recursive function
-      function _list(index, result) {
+      let _list = (index, result) => {
         return new Promise((resolve, reject) => {
-          Game.findOne({ '_id': rg[index] }, (err, res) => {
+          Game.findOne({ '_id': this.runningGames[index] }, (err, res) => {
             result.push(res);
 
-            if (index === rg.length - 1) {
+            if (index === this.runningGames.length - 1) {
               resolve(result);
             } else {
               _list(index + 1, result).then(data => {
@@ -77,7 +75,7 @@ module.exports = function(db) {
       }
 
       return new Promise((resolve, reject) => {
-        if (rg.length === 0) resolve(null)
+        if (this.runningGames.length === 0) resolve(null)
         else _list(0, []).then(data => resolve(data))
       })
     },
@@ -88,6 +86,7 @@ module.exports = function(db) {
       Game.find({}, (err, data) =>
       data.forEach(val => this.runningGames.push(val._id.toString())))
     },
+
 
     drop: function(db) {
       db.collections.games.drop();
@@ -109,15 +108,14 @@ module.exports = function(db) {
     // i.e. cannot see the arrangement of the ships
     update: function (id, data) {
       return new Promise((resolve, reject) => {
-        if (data.i !== undefined && data.i !== null) {
+        if (data.x !== undefined && data.x !== null) {
           this.reqs[id] = data;
-          console.log('Resolving with false');
           resolve(false);
         } else {
           let req = this.reqs[id];
 
           // cell to shoot
-          let field = `boards.${req.target}.${req.i}.${req.j}`;
+          let field = `boards.${req.target}.${req.x}.${req.y}`;
 
           let $set = {};
           let query = { $set };
@@ -125,8 +123,8 @@ module.exports = function(db) {
           if (data.hit) {
             $set[field] = 2; // set the cell shot to a ship
             if (data.kill) {
-              for (let cell of data.kill) {
-                let field = `boards.${req.target}.${cell[0]}.${cell[1]}`
+              for (let cell of data.kill.adj) {
+                let field = `boards.${req.target}.${cell.x}.${cell.y}`
                 $set[field] = 1;
               }
             }
@@ -137,9 +135,8 @@ module.exports = function(db) {
             $set[field] = 1; // set the cell shot to a gap
           }
 
-          Game.update({ "_id": id }, query,
+          Game.updateOne({ "_id": id }, query,
           (err, res) => {
-            console.log('Resolving with ' + JSON.stringify(req));
             if (err) reject(err);
             else resolve(req);
           })

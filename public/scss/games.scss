@@ -1,0 +1,52 @@
+canvas {
+  padding: 5px;
+}
+
+.boards {
+  text-align: center;
+  width: 400px;
+  cursor: pointer;
+}
+
+div, li {
+  box-shadow: 4px 5px 4px 0 rgba(0, 0, 0, 0.5);
+  background: rgb(214, 155, 40);
+  text-align: center;
+  display: inline-block;
+  padding: 30px;
+  margin: 10px;
+  border: ridge 5px rgb(148, 209, 172);
+  font-size: 30px;
+
+}
+
+.name-first {
+  color: red;
+}
+
+.name-second {
+  color: blue;
+}
+
+.turn {
+
+}
+
+.name-playing {
+  color: yellow;
+}
+
+.id {
+  font-size: 25px;
+  font-style: italic;
+}
+
+.time {
+  display: none;
+}
+
+
+
+ul {
+  list-style-type: none;
+}

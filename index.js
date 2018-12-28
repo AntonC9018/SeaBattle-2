@@ -23,16 +23,19 @@ var queue = [];
 io.on('connection', function(socket) {
   console.log('User connected! id: ' + socket.id);
 
+  // game monitoring
   socket.on('games', function(data) {
     socket.join('games');
 
-    io.to('games').emit('joined', socket.id)
+    // serve all games
+    socket.on('get all games',
+      () => play.list().then(
+        data => io.to(socket.id).emit('get all games', data)))
 
-    socket.on('disconnect', () => {
-      console.log('Disconnected');
-    })
-
-    // io.to(socket.id).emit('load', play.runningGames);
+    // serve a specific game
+    socket.on('get game',
+      id => play.getGame(id).then(
+        data => io.to(socket.id).emit('get game', data)))
   })
 
   let ID;
@@ -76,7 +79,7 @@ io.on('connection', function(socket) {
     socket.broadcast.emit('chat', msg, sender)
   })
 
-  socket.on('startGame', function(data) {
+  socket.on('start game', function(data) {
 
     class G {
       constructor(id, name) {
@@ -118,40 +121,62 @@ io.on('connection', function(socket) {
       play.game([data.name, e.game.names[0]]).then(function(_id) {
         ingame = true;
         game.id = _id;
-        io.to(game.ids[0]).emit('startGame', { id: _id, enemyName: name, initiative: 0 });
-        io.to(game.ids[1]).emit('startGame', { id: _id, enemyName: game.names[0], initiative: 1 });
 
-        play.getGame(_id).then(game => io.sockets.in('games').emit('newGame', game))
+        // first queued player goes first
+        io.to(game.ids[0]).emit('start game',
+          { id: _id, enemyName: name, initiative: 0 });
+
+        // the second queued player goes second
+        io.to(game.ids[1]).emit('start game',
+          { id: _id, enemyName: game.names[0], initiative: 1 });
+
+        // notify players that monitor games that a game has started
+        play.getGame(_id).then(
+          game => io.sockets.in('games').emit('new game', game))
 
         console.log('New game started! Players: ' + name.slice(8) + ' and ' + game.names[entok].slice(8));
       })
     }
 
+    // chat between the two players
     function chat(msg, name) {
       if (!ingame) return;
-      console.log('messaging!');
       io.to(game.ids[entok]).emit('chat', msg, name);
     }
 
+    // bind chat
     socket.on('chat', chat);
 
+    // accept requests
     socket.on('requestIn', function(data) {
       if (game.init === token) {
+
+        // pass them to the other player
         io.to(game.ids[entok]).emit('requestOut', data);
         data.target = entok;
+
+        // save changes to db
         update(game.id, data);
+
       } else {
         console.log('error');
       }
     })
-
+    // accept responses
     socket.on('responseIn', function(data) {
       if (game.init === entok) {
+
+        // pass them to the other player
         io.to(game.ids[entok]).emit('responseOut', data);
+
+        // save changes to db
         update(game.id, data);
+
         if (!data.hit) {
+          // pass turn
           game.init = token;
         }
+
       } else {
         console.log('error');
       }
@@ -159,9 +184,12 @@ io.on('connection', function(socket) {
 
     socket.on('disconnect', function() {
       console.log('user ' + name + ' disconnected');
+
+      // remove the player from queue
       if (queue[0] && queue[0].game.names[0] === name) {
         queue.splice(0, 1);
-      } else
+
+      } else // notify the other player about the disconnection
       io.to(game.ids[entok]).emit('connection closed');
     })
 
@@ -181,34 +209,18 @@ io.on('connection', function(socket) {
 })
 
 
-// list the games running
-app.get('/games', function(req, res) {
-  play.list().then((data) => {
-    res.render('games.ejs', {
-      games: data
-    });
-  })
-})
+// monitoring of the running games
+app.get('/games',
+  (req, res) => res.sendFile(__dirname + '/public/games/games.html'))
 
-app.get('/games/:id', function(req, res) {
-  play.getGame(req.params.id).then((data) => {
-    if (data) {
-      res.render('specificgame.ejs', {
-        game: data
-      });
-    } else {
-      res.end('404')
-    }
-  })
-})
+// monitoring of a specific games
+app.get('/games/:id',
+  (req, res) => res.sendFile(__dirname + '/public/games/specificgame.html'))
 
 
 function update(id, data) {
   play.update(id, data).then((res) => {
-    console.log(res);
     if (res) {
-      console.log(res);
-      console.log(id);
       io.to('games').emit(id, res, data);
     }
   });

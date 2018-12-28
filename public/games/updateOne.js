@@ -1,57 +1,57 @@
 var socket = io();
+var boards;
 
-const SIZE = 35;
-const OFFSET = SIZE / 8;
-const HALFSIZE = SIZE / 2;
-const WIDTH = 10;
-const HEIGHT = 10;
-const SM = 5;
-
+// connect to monitoring channel
 socket.emit('games');
 
-listen(game)
+// get the game to be monitored
+socket.emit('get game', window.location.pathname.split('/').pop());
+socket.on('get game', game => listen(game))
 
-const EMPTY = 0
-GAP = 1
-SHIP = 2;
+function cellClicked(x, y, p) {
+  console.log('You cannot intervene with the game');
+  console.log(p.cells);
+}
 
 function ping(meth, msg) {
   socket.emit('pint', meth, msg);
 }
 
-function cellClicked(i, j, p) {
-  console.log('You cannot intervene with the game');
-  console.log(p.cells);
-}
-
 // start listening for updates of a specific game
 function listen(game) {
 
-  var boards = [];
+  console.log(game);
 
-  let first = document.getElementById('myNavy');
-  let second = document.getElementById('enemyNavy');
+  if (!game) {
+    $('body').html('404');
+    return;
+  }
 
-  let fnick = first.querySelector('.nick');
-  let snick = second.querySelector('.nick');
+  function C(i, game) {
+    return  {
+      type: 'hidden',
+      click: cellClicked,
+      cells: game.boards[i]
+    }
+  }
 
-  fnick.innerHTML = game.players[0].slice(8);
-  snick.innerHTML = game.players[1].slice(8);
+  let divs = [$('#myNavy'), $('#enemyNavy')];
 
-  boards.push(new p5(sketch(false, game.boards[0]), first));
-  boards.push(new p5(sketch(false, game.boards[1]), second));
+  divs.map((e, i) => e.find('.nick')
+                      .html(game.players[i].slice(8)));
 
-  socket.on(game._id, function(request, response) {
-    console.log('UPDATE: ' + JSON.stringify(request) + '\n' + JSON.stringify(response));
+  // create a sketch for each players
+  boards = divs.map((e, i) => createSketch(C(i, game), e[0]));
 
-    if (request === 'test' && response === 'test') return;
 
-    boards[request.target].cells[request.i][request.j] = response.hit ? SHIP : GAP;
+  socket.on(game._id, function(req, res) {
 
-    if (response.kill) {
-      for (let cell of response.kill) {
-        boards[request.target].cells[cell[0]][cell[1]] = 1;
-      }
+    boards[req.target].set(req.x, req.y, res.hit ? SHIP : GAP);
+
+    // make adjacent cells into gaps on kill
+    if (res.kill) {
+      res.kill.adj.map(
+        c => boards[req.target].set(c.x, c.y, GAP))
     }
   })
 }
