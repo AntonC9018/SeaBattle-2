@@ -46,10 +46,30 @@ var sketch = function(C) { // myboard indicates if it is your board or your oppo
         // draw grid
         for (let j = 0; j < p.WIDTH + 1; j++) {
           p.line(0, j * SIZE, SIZE * p.WIDTH, j * SIZE);
+          // p.text(j - 1, HALFSIZE - 3, j * SIZE - HALFSIZE + 3)
         }
         for (let i = 0; i < p.WIDTH + 1; i++) {
           p.line(i * SIZE, 0, i * SIZE, SIZE * p.WIDTH);
+          // p.text(i - 1, i * SIZE - HALFSIZE + 3, HALFSIZE - 3)
         }
+        p.fill(214, 108, 74, 90);
+        p.noStroke();
+
+        
+        if (p.occupiedCells) {
+          for (let cell of p.occupiedCells) {
+            p.rect(cell.x * SIZE + STROKE, cell.y * SIZE + STROKE, SIZE - STROKE, SIZE - STROKE);
+          }
+        }
+      }
+
+      p.drawCross = function(x, y) {
+        p.stroke(184, 23, 23);
+        p.strokeWeight(CROSS_STROKE);
+        p.line(x + SM + CROSS_STROKE / 2, y + SM + CROSS_STROKE / 2,
+          x + SIZE - SM, y + SIZE - SM);
+        p.line(x + SIZE - SM, y + SM + CROSS_STROKE / 2,
+          x + SM + CROSS_STROKE / 2, y + SIZE - SM);
       }
 
       // bind different functions and variables depending on the board type
@@ -73,14 +93,7 @@ var sketch = function(C) { // myboard indicates if it is your board or your oppo
                   break;
 
                 case SHIP:
-                  p.stroke(184, 23, 23);
-                  p.strokeWeight(CROSS_STROKE);
-                  let x = i * SIZE;
-                  let y = j * SIZE;
-                  p.line(x + SM + CROSS_STROKE / 2, y + SM + CROSS_STROKE / 2,
-                    x + SIZE - SM, y + SIZE - SM);
-                  p.line(x + SIZE - SM, y + SM + CROSS_STROKE / 2,
-                    x + SM + CROSS_STROKE / 2, y + SIZE - SM);
+                  p.drawCross(i * SIZE, j * SIZE);
                   break;
               }
             }
@@ -118,19 +131,10 @@ var sketch = function(C) { // myboard indicates if it is your board or your oppo
           }
 
 
-          p.noFill();
-          p.stroke(184, 23, 23);
-          p.strokeWeight(CROSS_STROKE);
-
           for (let i of ship.inds) {
             // cross out dead cells
             if (!i.alive) {
-              let posx = i.x * SIZE;
-              let posy = i.y * SIZE;
-              p.line(posx + SM, posy + SM,
-                posx + SIZE - SM, posy + SIZE - SM);
-              p.line(posx + SIZE - SM, posy + SM,
-                posx + SM, posy + SIZE - SM);
+              p.drawCross(i.x * SIZE, i.y * SIZE)
             }
           }
         }
@@ -204,55 +208,6 @@ var sketch = function(C) { // myboard indicates if it is your board or your oppo
           }
 
           p.handleClick();
-        }
-
-
-        p.shoot = function(x, y) {
-
-          // check if hit a ship
-          for (let i = 0; i < p.ships.length; i++) {
-
-            let eff = p.ships[i].shoot(x, y);
-
-            if (eff.hit) {
-
-              if (eff.kill) {
-                let deadShip = p.ships.splice(i, 1)[0];
-                p.finish(deadShip);
-                p.deadShips.push(deadShip);
-
-                if (p.ships.length === 0) {
-                  eff.win = true;
-                } else {
-                  eff.win = false;
-                }
-              }
-
-              return eff;
-            }
-          }
-
-          // it did not hit any ships
-          let notHitYet = true;
-
-          // check if hit a gap
-          for (let g of p.gaps) {
-            if (g.x === x && g.y === y) {
-              notHitYet = false; // it did
-            }
-          }
-
-          // make the gap
-          if (notHitYet) {
-            p.gaps.push({ x, y });
-            return {
-              hit: false,
-              kill: null,
-              win: false
-            }
-          }
-
-          return 'error';
         }
 
       }

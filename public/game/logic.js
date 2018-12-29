@@ -131,21 +131,25 @@ class Ship {
 // instantiate logic
 var createLogic = function(C) {
   let p = {};
-  bindLogic(p);
+  bindLogic(p, C);
   return p;
 }
 
 
 
 var bindConstants = function(p, C) {
+  if (!p) p = {};
+  if (!C) C = {};
 
   p.WIDTH = C.WIDTH || 10;
   p.HEIGHT = C.HEIGHT || 10;
 
   p.type = C.type || 'hidden'; // hidden or visible (mine or enemy)
   p.handleClick = C.click || function() {};
+  p.win = C.win || function() {};
+  p.lose = C.lose || function() {};
 
-  if (p.type === 'hidden') {
+  if (p.type === 'hidden' || p.type === 'both') {
 
     // enemy board
     p.cells = C.cells ||
@@ -154,7 +158,8 @@ var bindConstants = function(p, C) {
           _.fill(Array(p.WIDTH * p.HEIGHT), 0),
           p.HEIGHT),
         p.WIDTH)[0];
-  } else {
+  }
+  if (p.type === 'visible'|| p.type === 'both') {
 
     // my boards
     p.ships = C.ships || [];
@@ -174,8 +179,18 @@ var bindConstants = function(p, C) {
     p.schema = C.schema || Object.assign({}, p.SCHEMA);
 
     p.ingame = C.ingame || false;
-  }
 
+    p.freeCells = [];
+
+    p.resetFreeCells = function() {
+      for (let i = 0; i < p.WIDTH; i++) {
+        for (let j = 0; j < p.HEIGHT; j++) {
+          p.freeCells.push({ x: i, y: j });
+        }
+      }
+    }
+  }
+  return p;
 }
 
 
@@ -210,9 +225,9 @@ var bindLogic = function(p, C) {
 
     // check if an index would be off the screen
     let x0 = ship.start.x > 0;
-    let xw = ship.end.x < p.WIDTH;
+    let xw = ship.end.x < p.WIDTH - 1;
     let y0 = ship.start.y > 0;
-    let yh = ship.end.y < p.WIDTH;
+    let yh = ship.end.y < p.HEIGHT - 1;
 
     // left and right adjacent cells
     if (x0) {
@@ -250,8 +265,28 @@ var bindLogic = function(p, C) {
     p.handleClick(x, y, p)
   }
 
+
+  p.compare = function(obj1, obj2) {
+    return (obj1.x === obj2.x && obj1.y === obj2.y);
+  }
+
   // enemy board
-  if (p.type === 'hidden') {
+  if (p.type === 'hidden' || p.type === 'both') {
+
+    p.record = function(x, y, r) {
+      if (r.hit) {
+        p.cells[x][y] = SHIP;
+        if (r.kill) {
+          enemyNavy.kill(r.kill.adj);
+          if (r.win) {
+            p.win();
+          }
+        }
+      }
+      else {
+        p.cells[x][y] = GAP;
+      }
+    }
 
     // set a space to some type
     p.set = function(x, y, type) {
@@ -259,12 +294,16 @@ var bindLogic = function(p, C) {
     }
 
     // finds out if the space is empty
-    p.isEmpty = function(x, y) {
+    var isEmpty = function(x, y) {
       if (x > p.WIDTH || y > p.WIDTH || x < 0 || y < 0) {
         console.log('You\'re checking a cell that is off the screen');
         return false;
       }
       return p.cells[x][y] === 0;
+    }
+
+    if (p.type === 'hidden') {
+      p.isEmpty = isEmpty;
     }
 
     // turn cells around the ship into gaps
@@ -276,11 +315,16 @@ var bindLogic = function(p, C) {
 
 
   // my board
-  } else {
+  }
+  if (p.type === 'visible' || p.type === 'both') {
 
     // finds out if the space is empty
     p.isEmpty = function(x, y) {
       if (x > p.WIDTH || y > p.HEIGHT || x < 0 || y < 0) return false;
+
+      if (p.type === 'both') {
+        if(!isEmpty(x, y)) return false
+      }
 
       // check for ships
       for (let ship of p.ships) {
@@ -305,6 +349,7 @@ var bindLogic = function(p, C) {
         }
       }
       return true;
+
     }
 
 
@@ -371,7 +416,7 @@ var bindLogic = function(p, C) {
       // Check availability of spaces
       for (let cell of p.occupiedCells) {
         for (let i of p.shipSilhouette.inds) {
-          if (i.x === cell.x && i.y === cell.y) {
+          if (p.compare(cell, i)) {
             return p.shipSilhouette.meetsCriteria = false;
           }
         }
@@ -386,30 +431,48 @@ var bindLogic = function(p, C) {
       return new Ship(start, end);
     }
 
+    // just add an existing ship and update shema and such
+    p._addShip = function(ship) {
 
-    // add the ship to ships
+      p.ships.push(ship);
+
+      // Update occupiedCells
+      let adj = p.calcAdjacent(ship);
+
+      for (let i of ship.inds.concat(adj)) {
+        p.occupiedCells.push({ x: i.x, y: i.y });
+      }
+
+      // update free cells
+      p.freeCells = p.freeCells.filter(cell => {
+
+        for (let i of ship.inds.concat(adj)) {
+          if (p.compare(i, cell)) {
+            return false;
+          }
+        }
+        return true;
+      })
+
+      ship.adj = adj;
+      ship.span = ship.inds.length + adj.length;
+
+      // update schema
+      p.updateSchema(ship);
+    }
+
+
+    // create and add the ship to ships
     p.addShip = function(start, end) {
+
       // create the actual ship
       let ends = p.matchEnds(start, end);
       let newborn = p.createShip(ends.start, ends.end);
-      p.ships.push(newborn);
 
+      p._addShip(newborn);
 
-      // Update occupiedCells
-      for (let i of newborn.inds) {
-        p.occupiedCells.push({ x: i.x, y: i.y });
-      }
-
-      let adj = p.calcAdjacent(newborn);
-      for (let i of adj) {
-        p.occupiedCells.push({ x: i.x, y: i.y });
-      }
-
-      newborn.adj = adj;
-      newborn.span = newborn.inds.length + adj.length;
-
-      // update schema
-      p.updateSchema(newborn);
+      // return new ship
+      return newborn;
     }
 
 
@@ -429,7 +492,7 @@ var bindLogic = function(p, C) {
 
       let has = function(el) {
         for (let i = 0; i < p.gaps.length; i++) {
-          if (p.gaps[i].x === el.x && p.gaps[i].y === el.y) {
+          if (p.compare(p.gaps[i], el)) {
             return i;
           }
         }
@@ -442,6 +505,55 @@ var bindLogic = function(p, C) {
           p.gaps.push(cell);
         }
       }
+    }
+
+    // shoot a cell specified by coordinates
+    p.shoot = function(x, y) {
+
+      // check if hit a ship
+      for (let i = 0; i < p.ships.length; i++) {
+
+        let eff = p.ships[i].shoot(x, y);
+
+        if (eff.hit) {
+
+          if (eff.kill) {
+            let deadShip = p.ships.splice(i, 1)[0];
+            p.finish(deadShip);
+            p.deadShips.push(deadShip);
+
+            if (p.ships.length === 0) {
+              eff.win = true;
+            } else {
+              eff.win = false;
+            }
+          }
+
+          return eff;
+        }
+      }
+
+      // it did not hit any ships
+      let notHitYet = true;
+
+      // check if hit a gap
+      for (let g of p.gaps) {
+        if (g.x === x && g.y === y) {
+          notHitYet = false; // it did
+        }
+      }
+
+      // make the gap
+      if (notHitYet) {
+        p.gaps.push({ x, y });
+        return {
+          hit: false,
+          kill: null,
+          win: false
+        }
+      }
+
+      return 'error';
     }
   }
 }

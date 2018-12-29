@@ -56,8 +56,6 @@ function installSocket() {
 
     if (initiative === 1) {
       awaitingReq = true;
-    } else {
-      alert('Your game is ready!');
     }
 
     // enemy name container (.nick)
@@ -107,7 +105,9 @@ function installSocket() {
 function setup() {
   myNavy = createSketch({
       type: "visible",
-      click: () => console.log('mouse clicked')
+      click: () => console.log('mouse clicked'),
+      win,
+      lose
     },
     document.getElementById('myNavy'));
 
@@ -123,8 +123,14 @@ function startGame() {
 var latestshot;
 
 function cellClicked(x, y) {
-  console.log('Cell clicked');
+
   if (initiative === undefined || enemyNavy.cells[x][y] !== 0 || initiative !== 0) return;
+  console.log('Cell clicked');
+  if (usebot) {
+    botCellClicked(x, y)
+    return;
+  }
+
 
   if (awaitingReq || awaitingRes) {
     console.log('Awaiting req or res. Shooting not allowed');
@@ -162,28 +168,22 @@ function answerResponse(r) {
   let x = latestshot.x;
   let y = latestshot.y;
 
-  if (r.hit) {
+  enemyNavy.record(x, y, r);
 
+  if (r.hit) {
     changeState(STATE_READY);
     console.log('A ship has been hit!');
 
-    enemyNavy.cells[x][y] = 2;
 
-    if (r.kill) {
-      enemyNavy.kill(r.kill.adj);
       if (r.win) {
         socket.emit('refresh');
         console.log('Calling win() from answerResponse()');
-        win();
-      }
     }
 
   } else {
 
     changeState(STATE_FAIL);
     console.log('An empty space has been hit!');
-
-    enemyNavy.cells[x][y] = 1;
     initiative = 1;
     pass();
 
@@ -216,10 +216,11 @@ function refresh() {
   enBoard.remove();
 
   document.querySelector('#myNavy canvas').remove();
+  document.getElementById('random-arrangement').classList.remove('hidden')
 
   let enemy = document.getElementById('enemyNavy');
   enemy.classList.add('hidden');
-  enemyNavy = '';
+  enemyName = '';
   document.querySelector('#enemyNavy .nick').innerHTML = '';
 
   let startbtn = document.querySelector('.button.start');
@@ -234,4 +235,51 @@ function refresh() {
 
 function ping(meth, msg) {
   socket.emit('pint', meth, msg);
+}
+
+
+// BOT STUFF
+var bot;
+var botBoard;
+
+function createBot() {
+  botBoard = createLogic({ type: 'visible' });
+  randomArrangement(botBoard);
+  bot = new RandomBot({
+    WIDTH: 10,
+    HEIGHT: 10,
+    fun: botShoot
+  });
+}
+
+function botShoot(x, y) {
+  console.log('BOT IS SHOOTING');
+  let eff = myNavy.shoot(x, y);
+  if (!eff.hit) {
+    initiative = 0;
+  } else {
+    if (eff.win) {
+      lose();
+    } else {
+      setTimeout(() => bot.act(), 800);
+    }
+  }
+  return eff;
+}
+
+function botCellClicked(x, y) {
+  if (initiative !== 0) return;
+  initiative = 1;
+  let eff = botBoard.shoot(x, y);
+  console.log(eff);
+  enemyNavy.record(x, y, eff);
+  if (!eff.hit) {
+    console.log('passing initiative');
+    setTimeout(() => bot.act(), 800);
+  } else {
+    if (eff.win) {
+      win();
+    }
+    initiative = 0;
+  }
 }

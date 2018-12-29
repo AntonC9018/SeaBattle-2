@@ -15,7 +15,9 @@ function changeState(state) {
 
 }
 
+
 window.addEventListener('resize', setOffset);
+
 
 // offset stateScreen (see state.js)
 function setOffset() {
@@ -32,8 +34,12 @@ function setOffset() {
   elstate.style.height = coords.height + 'px';
 }
 
+
+
 // on "start"-button click
 function start() {
+  initiative = undefined;
+  
   if (!myNavy.debugging) {
     for (let key of Object.keys(myNavy.schema)) {
       if (myNavy.schema[key] !== 0) {
@@ -41,6 +47,8 @@ function start() {
       }
     }
   }
+
+  document.getElementById('random-arrangement').classList.add('hidden');
 
   myNavy.shipSilhouette = null;
 
@@ -51,13 +59,11 @@ function start() {
   this.classList.add('hidden');
 
   // create board for enemy navy
-  enemyNavy = createSketch({ type: "hidden", click: cellClicked }, window.document.getElementById('enemyNavy'));
+  enemyNavy = createSketch({ type: "hidden", click: cellClicked },
+    window.document.getElementById('enemyNavy'));
 
   // offset the stateScreen
   setOffset();
-
-  // let the thing run
-  changeState(STATE_WAITING);
 
   // get nick
   let el = document.querySelector('.nick');
@@ -69,8 +75,16 @@ function start() {
 
   myNavy.ingame = true; // change game state when button is clicked
 
-  startGame();
-
+  if (!usebot) {
+    // let the thing run
+    changeState(STATE_WAITING);
+    startGame();
+  } else {
+    enemyName = 'The Random Bot';
+    window.document.getElementById('enemyNavy').querySelector('.nick').innerHTML = enemyName;
+    createBot();
+    setTimeout(() => initiative = 0, 200);
+  }
 }
 
 
@@ -101,3 +115,16 @@ function sendmsg() {
 function randomNick() {
   document.querySelector('#myNavy .nick').innerHTML = randName();
 }
+
+var usebot = false;
+
+function uncheck() {
+  usebot = !usebot;
+}
+
+
+// $('#random-arrangement').click(() => randomArrangement(myNavy));
+
+document.getElementById('random-arrangement').addEventListener('click', () => {
+  randomArrangement(myNavy);
+})
